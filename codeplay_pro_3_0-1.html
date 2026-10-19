@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#050505">
+<title>CodePlay Pro 3.0 — Professional IDE</title>
+<meta name="description" content="Editor de código móvil y escritorio con proyectos locales, vista previa, academia y juegos.">
+<script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+:root{--accent-color:#10b981}
+*{box-sizing:border-box;margin:0;padding:0;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;-webkit-tap-highlight-color:transparent}
+body{background:#050505;color:#fff;height:100dvh;min-height:420px;display:flex;flex-direction:column;overflow:hidden}
+button{background:#18181b;color:#fff;border:1px solid #3f3f46;padding:10px 14px;font-size:12px;border-radius:6px;cursor:pointer;text-transform:uppercase;font-weight:bold;user-select:none}
+button:active{background:#3f3f46;transform:scale(.97)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent-color);outline-offset:2px}
+.btn-run{background:#fff;color:#000;border-color:#fff}.btn-clear{color:#ef4444;border-color:#7f1d1d}
+header{background:#0f0f11;border-bottom:1px solid #27272a;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;z-index:10}
+.header-left,.actions{display:flex;align-items:center;gap:8px;min-width:0}.brand{font-weight:bold;font-size:13px;color:#fff;letter-spacing:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
+.actions{gap:6px}.actions button{padding:9px 10px}
+.cyber-modal{position:fixed;inset:0;background:#000d;backdrop-filter:blur(6px);display:none;justify-content:center;align-items:center;z-index:5000;padding:20px}.cyber-modal.active{display:flex}
+.cyber-modal-box{background:#121214;border:1px solid #ffffff33;border-radius:8px;padding:20px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:16px;box-shadow:0 0 30px #000e}
+.cyber-modal-title{font-size:13px;font-weight:900;letter-spacing:1px}.cyber-modal-text{color:#a1a1aa;font-size:12px;line-height:1.5}
+.cyber-input{background:#020203;border:1px solid var(--accent-color);color:#fff;padding:12px;font-size:14px;border-radius:6px;outline:none;width:100%}
+.snippet-btn{background:#18181b;color:#f4f4f5;border:1px solid #3f3f46;padding:12px;text-align:left;border-radius:6px;font-size:12px;width:100%}
+.theme-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.theme-option{padding:12px;border-radius:6px;border:1px solid #3f3f46;background:#18181b;color:#fff;font-size:12px;font-weight:bold;cursor:pointer;text-align:center}
+#sidebar{position:fixed;top:0;left:0;width:min(290px,88vw);height:100%;background:#09090b;border-right:1px solid #27272a;z-index:4000;padding:16px;display:flex;flex-direction:column;gap:12px;transform:translateX(-105%);transition:transform .25s ease-in-out}
+#sidebar.open{transform:translateX(0)}.sidebar-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #27272a;padding-bottom:10px;font-size:13px;font-weight:bold}
+.file-list{display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:200px;flex:1}
+.file-item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:#121214;border:1px solid #27272a;border-radius:6px;font-size:12px;color:#a1a1aa}
+.file-item.active{border-color:var(--accent-color);color:#fff;background:#18181b;font-weight:bold}.file-select{flex:1;text-align:left;border:0;background:transparent;padding:4px;color:inherit;text-transform:none;overflow:hidden;text-overflow:ellipsis}
+.file-delete{background:transparent;border:0;color:#ef4444;padding:4px 8px}
+.workspace{flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden;min-height:0}
+.screen-view{display:none;flex:1;width:100%;height:100%;min-height:0;flex-direction:column}.screen-view.active{display:flex}
+textarea{flex:1;background:#020203;color:#f4f4f5;border:0;padding:14px;font-size:14px;outline:none;resize:none;width:100%;height:100%;line-height:1.55;tab-size:4;white-space:pre;overflow:auto}
+.console-output{flex:1;background:#020203;padding:14px;font-size:13px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;width:100%;min-height:0;display:flex;flex-direction:column;gap:5px}
+.log-line{color:var(--accent-color);line-height:1.45}.log-error{color:#f87171;line-height:1.45;font-weight:bold}.log-system{color:#71717a;font-style:italic}
+iframe{flex:1;width:100%;height:100%;min-height:0;border:0;background:#fff}
+.symbols{display:flex;gap:8px;padding:9px 12px;background:#0f0f11;border-top:1px solid #27272a;overflow-x:auto;z-index:20;align-items:center;flex-shrink:0}
+.symbols button{padding:8px 13px;font-size:13px;white-space:nowrap;color:#a1a1aa}.btn-snippet{background:#27272a!important;color:#fff!important;border-color:#52525b!important}
+#viewOverlay{position:fixed;inset:0;z-index:3500;background:#0008;display:none}#viewOverlay.active{display:block}
+header{box-shadow:0 4px 24px #0005}
+.editor-toolbar{height:34px;flex-shrink:0;background:#0b0b0d;border-bottom:1px solid #202024;display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:10px;color:#8b8b95;letter-spacing:.5px}
+.editor-toolbar-left,.editor-toolbar-right{display:flex;align-items:center;gap:8px}
+.editor-toolbar-right button{padding:4px 7px;font-size:10px;text-transform:none;background:transparent;border-color:#303036;color:#a1a1aa}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--accent-color);box-shadow:0 0 8px var(--accent-color)}
+.toolbar-separator{color:#45454d}
+.editor-wrap{display:flex;flex:1;min-height:0;background:#020203;overflow:hidden}
+.line-numbers{flex-shrink:0;width:42px;padding:14px 8px 14px 0;text-align:right;color:#52525b;background:#070708;border-right:1px solid #1f1f23;font-size:14px;line-height:1.55;white-space:pre;overflow:hidden;user-select:none}
+.editor-wrap textarea{padding-left:12px}
+.code-layer{position:relative;flex:1;min-width:0;min-height:0;overflow:hidden}
+.code-layer textarea,.code-layer pre{position:absolute;inset:0;margin:0;width:100%;height:100%;padding:14px 12px;border:0;font:14px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:4;white-space:pre;overflow:auto;overflow-wrap:normal;letter-spacing:normal}
+.code-layer pre{pointer-events:none;background:#020203;color:#e4e4e7;z-index:0;scrollbar-width:none}
+.code-layer textarea{z-index:1;background:transparent;color:transparent;caret-color:var(--accent-color);-webkit-text-fill-color:transparent;resize:none;outline:none;overflow:auto}
+.code-layer textarea::selection{background:#38bdf855;-webkit-text-fill-color:transparent}
+.syntax-keyword{color:#c084fc}.syntax-string{color:#86efac}.syntax-comment{color:#71717a;font-style:italic}.syntax-number{color:#fbbf24}.syntax-function{color:#67e8f9}.syntax-tag{color:#fb7185}.syntax-attr{color:#fbbf24}
+.autocomplete-popup{display:none;position:absolute;z-index:30;left:12px;top:42px;max-width:min(280px,90%);max-height:190px;overflow:auto;background:#111115;border:1px solid var(--accent-color);border-radius:7px;box-shadow:0 12px 30px #000b;padding:4px}
+.autocomplete-popup.active{display:block}.autocomplete-option{display:flex;justify-content:space-between;gap:14px;padding:7px 9px;border-radius:4px;font-size:12px;cursor:pointer;color:#e4e4e7}.autocomplete-option.active,.autocomplete-option:hover{background:#27272a}.autocomplete-option small{color:#71717a}
+.find-panel{display:none;align-items:center;gap:8px;padding:8px 12px;background:#141417;border-bottom:1px solid #27272a}
+.find-panel.active{display:flex}
+.find-panel input{min-width:0;flex:1;background:#050506;color:#fff;border:1px solid #3f3f46;border-radius:5px;padding:8px;font-size:12px}
+.find-panel span{font-size:10px;color:#a1a1aa;white-space:nowrap}
+.find-panel button{padding:6px 8px}
+.statusbar{height:22px;flex-shrink:0;background:var(--accent-color);color:#03130d;display:flex;justify-content:space-between;align-items:center;padding:0 10px;font-size:10px;font-weight:bold}
+@media(max-width:600px){.editor-toolbar{padding:0 8px}.editor-toolbar-right{gap:4px}.editor-toolbar-right button{font-size:9px;padding:4px}.line-numbers{width:32px;font-size:12px}header{padding:8px}.brand{max-width:95px;font-size:11px}.header-left,.actions{gap:4px}.actions button{padding:9px 7px;font-size:10px}.symbols{gap:6px;padding:8px}.symbols button{padding:8px 11px}}
+</style>
+</head>
+<body>
+<div id="viewOverlay"></div>
+<div id="cyberModal" class="cyber-modal" role="dialog" aria-modal="true" aria-labelledby="clearTitle">
+ <div class="cyber-modal-box"><div class="cyber-modal-title" id="clearTitle">ALERTA DE SISTEMA</div><div class="cyber-modal-text">¿Estás seguro de limpiar todo el código de este archivo?</div><div style="display:flex;justify-content:flex-end;gap:8px"><button id="modalCancelBtn">Cancelar</button><button id="modalConfirmBtn" class="btn-clear">Limpiar</button></div></div>
+</div>
+<div id="snippetsModal" class="cyber-modal" role="dialog" aria-modal="true">
+ <div class="cyber-modal-box"><div class="cyber-modal-title">⚡ PLANTILLAS RÁPIDAS</div><div class="cyber-modal-text">Selecciona un fragmento para insertar en el cursor:</div><div id="snippetsContainer" style="display:flex;flex-direction:column;gap:8px;max-height:250px;overflow-y:auto"></div><button id="snippetsCloseBtn">Cerrar</button></div>
+</div>
+<div id="themesModal" class="cyber-modal" role="dialog" aria-modal="true">
+ <div class="cyber-modal-box"><div class="cyber-modal-title">🎨 TEMAS CYBERPUNK</div><div class="cyber-modal-text">Elige tu estilo visual favorito:</div><div class="theme-grid"><button class="theme-option" id="themeMatrix">🟢 Matrix</button><button class="theme-option" id="themeBlue">🔵 Neón Azul</button><button class="theme-option" id="themeHacker">🔴 Hacker</button><button class="theme-option" id="themeCyber">🟣 Ciberespacio</button></div><button id="themesCloseBtn">Cerrar</button></div>
+</div>
+<div id="inputModal" class="cyber-modal" role="dialog" aria-modal="true" aria-labelledby="inputTitle">
+ <form id="inputForm" class="cyber-modal-box"><div class="cyber-modal-title" id="inputTitle">📥 ENTRADA DE DATOS</div><label class="cyber-modal-text" id="inputModalPromptText" for="userInputField">Escribe un valor:</label><input type="text" id="userInputField" class="cyber-input" placeholder="Tu respuesta..." autocomplete="off"><div style="display:flex;justify-content:flex-end;gap:8px"><button type="submit" class="btn-run" style="width:100%">Aceptar</button></div></form>
+</div>
+<aside id="sidebar" aria-label="Archivos y configuración">
+ <div class="sidebar-header"><span>⚡ ARCHIVOS & CONFIG</span><button id="closeSidebarBtn" style="padding:4px 8px">✕</button></div>
+ <div style="display:flex;flex-direction:column;gap:8px"><button id="newPyBtn">+ Nuevo .py</button><button id="newJsBtn">+ Nuevo .js</button><button id="newHtmlBtn">+ Nuevo .html</button><button id="openThemesBtn" style="background:#27272a;margin-top:4px;border-color:var(--accent-color);color:var(--accent-color)">🎨 Cambiar Tema</button></div>
+ <div style="font-size:11px;color:#71717a;margin-top:4px">MIS ARCHIVOS:</div><div class="file-list" id="fileListContainer"></div>
+ <button id="downloadBtn" style="width:100%;margin-top:auto">📥 Descargar Archivo</button>
+</aside>
+<header>
+ <div class="header-left"><button id="openSidebarBtn" aria-label="Abrir archivos">☰</button><div class="brand" id="currentFileName">script.py</div></div>
+ <div class="actions"><button class="btn-clear" id="clearEditorBtn" aria-label="Limpiar editor">🗑️</button><button id="toggleViewBtn" style="background:#27272a">📊 Consola</button><button class="btn-run" id="runBtn">▶ Ejecutar</button></div>
+</header>
+<main class="workspace">
+ <section id="editorScreen" class="screen-view active" aria-label="Editor">
+  <div class="editor-toolbar"><div class="editor-toolbar-left"><span class="live-dot"></span><span id="languageLabel">PYTHON</span><span class="toolbar-separator">/</span><span id="saveStatus">Guardado</span></div><div class="editor-toolbar-right"><button id="findBtn" title="Buscar (Ctrl+F)">⌕ Buscar</button><button id="formatCodeBtn" title="Formatear código">⤵ Formatear</button><button id="formatHintBtn" title="Atajos de teclado">⌨ Atajos</button></div></div>
+  <div id="findPanel" class="find-panel"><input id="findInput" type="search" placeholder="Buscar en este archivo…" aria-label="Buscar texto"><span id="findCount">0 resultados</span><button id="findCloseBtn">✕</button></div>
+  <div class="editor-wrap"><div id="lineNumbers" class="line-numbers" aria-hidden="true">1</div><div class="code-layer"><pre id="syntaxLayer" aria-hidden="true"></pre><textarea id="codeEditor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Código fuente" placeholder="Escribe tu código aquí..."></textarea><div id="autocompletePopup" class="autocomplete-popup" role="listbox" aria-label="Sugerencias de código"></div></div></div>
+  <div class="statusbar"><span>CODEPLAY PRO</span><span id="cursorStatus">Lín 1, Col 1</span><span>Ctrl+Enter ▶</span></div>
+ </section>
+ <section id="consoleScreen" class="screen-view" aria-label="Salida">
+  <div style="background:#121214;padding:10px 16px;font-size:11px;color:#a1a1aa;border-bottom:1px solid #27272a;display:flex;justify-content:space-between;align-items:center;gap:8px"><span id="outputHeaderTitle">CONSOLA / RESULTADO</span><div style="display:flex;gap:6px;align-items:center"><button id="copyConsoleBtn" style="padding:4px 8px;font-size:10px">Copiar salida</button><button id="clearConsoleBtn" style="padding:4px 8px;font-size:10px">Limpiar Consola</button></div></div>
+  <div class="console-output" id="consoleOut" aria-live="polite"><span class="log-system">&gt;&gt; Consola lista para ejecución.</span></div><iframe id="webPreview" title="Vista previa HTML" sandbox="allow-scripts allow-forms"></iframe>
+ </section>
+</main>
+<nav class="symbols" id="symbolsBar" aria-label="Símbolos rápidos"><button class="btn-snippet" id="openSnippetsBtn">⚡ Snippets</button><button class="sym-btn">{</button><button class="sym-btn">}</button><button class="sym-btn">(</button><button class="sym-btn">)</button><button class="sym-btn">;</button><button class="sym-btn">=</button><button class="sym-btn">"</button><button class="sym-btn">&lt;</button><button class="sym-btn">&gt;</button></nav>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const editor=$('codeEditor'), consoleOut=$('consoleOut'), webPreview=$('webPreview');
+const editorScreen=$('editorScreen'), consoleScreen=$('consoleScreen'), toggleViewBtn=$('toggleViewBtn');
+const outputHeaderTitle=$('outputHeaderTitle'), clearConsoleBtn=$('clearConsoleBtn'), currentFileNameDisplay=$('currentFileName');
+const sidebar=$('sidebar'), fileListContainer=$('fileListContainer'), cyberModal=$('cyberModal');
+const snippetsModal=$('snippetsModal'), snippetsContainer=$('snippetsContainer'), themesModal=$('themesModal');
+const inputModal=$('inputModal'), inputModalPromptText=$('inputModalPromptText'), userInputField=$('userInputField');
+const overlay=$('viewOverlay');
+const STORAGE_FILES='cp_files_system_v2', STORAGE_ACTIVE='cp_active_file_v2', STORAGE_THEME='cp_theme_color';
+const defaultFiles={
+ 'script.py':'nombre = input("¿Cómo te llamas?: ")\\nprint("¡Hola, " + nombre + "!")'.replaceAll('\\n','\n'),
+ 'script.js':'const nombre = prompt("¿Cómo te llamas?");\\nconsole.log("¡Hola, " + (nombre ?? "mundo") + "!");'.replaceAll('\\n','\n'),
+ 'index.html':'<!DOCTYPE html>\\n<html lang="es">\\n<head>\\n  <meta charset="UTF-8">\\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\\n  <title>Mi página</title>\\n</head>\\n<body>\\n  <h1>Hola Web</h1>\\n  <p>¡Mi primera página con CodePlay Pro!</p>\\n</body>\\n</html>'.replaceAll('\\n','\n')
+};
+function readJSON(key,fallback){try{const value=localStorage.getItem(key);return value?JSON.parse(value):fallback}catch{return fallback}}
+let files=readJSON(STORAGE_FILES,null);
+if(!files||typeof files!=='object'||Array.isArray(files)) files={...defaultFiles};
+for(const [name,code] of Object.entries(defaultFiles)) if(typeof files[name]!=='string') files[name]=code;
+let activeFile=localStorage.getItem(STORAGE_ACTIVE)||'script.py';
+if(typeof files[activeFile]!=='string') activeFile=Object.keys(files)[0]||'script.py';
+let isOutput=false, inputResolveCallback=null, isRunning=false, runToken=0;
+function saveStorage(){
+ try{files[activeFile]=editor.value;localStorage.setItem(STORAGE_FILES,JSON.stringify(files));localStorage.setItem(STORAGE_ACTIVE,activeFile)}
+ catch(err){printToConsole('No se pudo guardar en el almacenamiento del navegador: '+err.message,'error')}
+}
+function setTheme(color,save=true){
+ document.documentElement.style.setProperty('--accent-color',color);
+ if(save){try{localStorage.setItem(STORAGE_THEME,color)}catch{};themesModal.classList.remove('active');closeSidebar()}
+}
+const savedTheme=(()=>{try{return localStorage.getItem(STORAGE_THEME)||'#10b981'}catch{return '#10b981'}})();
+setTheme(savedTheme,false);
+function printToConsole(text,type='log'){
+ const span=document.createElement('span');span.className=type==='error'?'log-error':type==='system'?'log-system':'log-line';
+ span.textContent=String(text);consoleOut.appendChild(span);consoleOut.scrollTop=consoleOut.scrollHeight;
+}
+function clearConsole(){consoleOut.replaceChildren();printToConsole('>> Consola limpiada.','system')}
+function switchView(view){
+ isOutput=view==='output';editorScreen.classList.toggle('active',!isOutput);consoleScreen.classList.toggle('active',isOutput);
+ toggleViewBtn.textContent=isOutput?'⌨ Editor':'📊 Consola';
+}
+function updateFileLabel(){currentFileNameDisplay.textContent=activeFile;document.title=activeFile+' — CodePlay Pro'}
+function renderFileList(){
+ fileListContainer.replaceChildren();
+ for(const name of Object.keys(files)){
+  const row=document.createElement('div');row.className='file-item'+(name===activeFile?' active':'');
+  const select=document.createElement('button');select.className='file-select';select.textContent=name;select.title='Abrir '+name;
+  select.addEventListener('click',()=>openFile(name));
+  const del=document.createElement('button');del.className='file-delete';del.textContent='×';del.setAttribute('aria-label','Eliminar '+name);del.title='Eliminar archivo';
+  del.addEventListener('click',()=>deleteFile(name));row.append(select,del);fileListContainer.appendChild(row);
+ }
+}
+function openFile(name){if(typeof files[name]!=='string')return;files[activeFile]=editor.value;activeFile=name;editor.value=files[name];saveStorage();updateFileLabel();renderFileList();closeSidebar();switchView('editor');editor.focus()}
+function closeSidebar(){sidebar.classList.remove('open');overlay.classList.remove('active')}
+function createNewFile(base,ext){
+ let name=base,n=1;while(Object.prototype.hasOwnProperty.call(files,name)){const dot=base.lastIndexOf('.');name=base.slice(0,dot)+'-'+n+base.slice(dot);n++}
+ const templates={py:'# Escribe tu código Python aquí\\nprint("Hola, mundo")'.replaceAll('\\n','\n'),js:'// Escribe tu código JavaScript aquí\\nconsole.log("Hola, mundo");'.replaceAll('\\n','\n'),html:'<!DOCTYPE html>\\n<html lang="es">\\n<head><meta charset="UTF-8"><title>Nuevo documento</title></head>\\n<body><h1>Hola, mundo</h1></body>\\n</html>'.replaceAll('\\n','\n')};
+ files[activeFile]=editor.value;files[name]=templates[ext]||'';activeFile=name;editor.value=files[name];saveStorage();updateFileLabel();renderFileList();closeSidebar();switchView('editor');editor.focus();
+}
+function deleteFile(name){
+ if(!Object.prototype.hasOwnProperty.call(files,name))return;
+ if(Object.keys(files).length===1){printToConsole('Debe existir al menos un archivo.','error');return}
+ if(!confirm('¿Eliminar "'+name+'"? Esta acción no se puede deshacer.'))return;
+ delete files[name];if(activeFile===name){activeFile=Object.keys(files)[0];editor.value=files[activeFile]}
+ saveStorage();updateFileLabel();renderFileList()
+}
+function insertAtCursor(text){
+ const start=editor.selectionStart,end=editor.selectionEnd;
+ editor.setRangeText(text,start,end,'end');editor.focus();files[activeFile]=editor.value;saveStorage()
+}
+function bindClick(id,handler){$(id).addEventListener('click',handler)}
+bindClick('openThemesBtn',()=>themesModal.classList.add('active'));
+bindClick('themesCloseBtn',()=>themesModal.classList.remove('active'));
+bindClick('themeMatrix',()=>setTheme('#10b981'));
+bindClick('themeBlue',()=>setTheme('#38bdf8'));
+bindClick('themeHacker',()=>setTheme('#f43f5e'));
+bindClick('themeCyber',()=>setTheme('#c084fc'));
+bindClick('openSnippetsBtn',()=>{
+ const snippets={
+ js:[['console.log()','console.log("");'],['prompt() Entrada','const valor = prompt("Ingresa un valor:");'],['Función Flecha','const miFuncion = (param) => {\\n    return param;\\n};'.replaceAll('\\n','\n')],['Bucle for','for (let i = 0; i < 5; i++) {\\n    console.log(i);\\n}'.replaceAll('\\n','\n')]],
+ py:[['print()','print("Hola")'],['input() Entrada','nombre = input("Ingresa algo: ")'],['Definir Función','def mi_funcion(param):\\n    return param'.replaceAll('\\n','\n')],['Bucle for','for i in range(5):\\n    print(i)'.replaceAll('\\n','\n')]],
+ html:[['Estructura Base HTML5','<!DOCTYPE html>\\n<html lang="es">\\n<head>\\n  <meta charset="UTF-8">\\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\\n  <title>Título</title>\\n</head>\\n<body>\\n  <h1>Hola Mundo</h1>\\n</body>\\n</html>'.replaceAll('\\n','\n')],['Enlace','<a href="https://example.com">Visitar sitio</a>'],['Botón','<button type="button">Haz clic</button>']]
+ };
+ snippetsContainer.replaceChildren();for(const [name,code] of (snippets[activeFile.split('.').pop().toLowerCase()]||snippets.js)){
+  const btn=document.createElement('button');btn.className='snippet-btn';btn.textContent='⚡ '+name;btn.addEventListener('click',()=>{insertAtCursor(code);snippetsModal.classList.remove('active')});snippetsContainer.appendChild(btn)
+ }snippetsModal.classList.add('active')
+});
+bindClick('snippetsCloseBtn',()=>snippetsModal.classList.remove('active'));
+bindClick('clearEditorBtn',()=>cyberModal.classList.add('active'));
+bindClick('modalCancelBtn',()=>cyberModal.classList.remove('active'));
+bindClick('modalConfirmBtn',()=>{editor.value='';files[activeFile]='';saveStorage();cyberModal.classList.remove('active');editor.focus();if(typeof updateEditorChrome==='function')updateEditorChrome();if(typeof highlightCode==='function')highlightCode()});
+bindClick('openSidebarBtn',()=>{sidebar.classList.add('open');overlay.classList.add('active');renderFileList()});
+bindClick('closeSidebarBtn',closeSidebar);bindClick('viewOverlay',closeSidebar);
+bindClick('newPyBtn',()=>createNewFile('script.py','py'));
+bindClick('newJsBtn',()=>createNewFile('script.js','js'));
+bindClick('newHtmlBtn',()=>createNewFile('index.html','html'));
+bindClick('downloadBtn',()=>{
+ files[activeFile]=editor.value;saveStorage();const blob=new Blob([editor.value],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob);
+ const a=document.createElement('a');a.href=url;a.download=activeFile;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)
+});
+bindClick('toggleViewBtn',()=>switchView(isOutput?'editor':'output'));
+bindClick('clearConsoleBtn',clearConsole);
+editor.addEventListener('input',()=>{files[activeFile]=editor.value;try{localStorage.setItem(STORAGE_FILES,JSON.stringify(files))}catch{}});
+editor.addEventListener('keydown',e=>{
+ if(e.key==='Tab'){e.preventDefault();insertAtCursor('    ')}
+ else if(e.key==='Enter'){
+  const pos=editor.selectionStart,before=editor.value.slice(0,pos),line=before.slice(before.lastIndexOf('\n')+1),indent=(line.match(/^\s*/)||[''])[0];
+  if(indent){e.preventDefault();insertAtCursor('\n'+indent)}
+ }
+});
+document.querySelectorAll('.sym-btn').forEach(btn=>btn.addEventListener('click',()=>insertAtCursor(btn.textContent==='&lt;'?'<':btn.textContent==='&gt;'?'>':btn.textContent)));
+function askUserModal(promptText){
+ return new Promise(resolve=>{inputModalPromptText.textContent=promptText||'Ingresa un valor:';userInputField.value='';inputResolveCallback=resolve;inputModal.classList.add('active');userInputField.focus()})
+}
+$('inputForm').addEventListener('submit',e=>{e.preventDefault();if(!inputResolveCallback)return;const resolve=inputResolveCallback;inputResolveCallback=null;inputModal.classList.remove('active');resolve(userInputField.value)});
+function cancelPendingInput(){if(inputResolveCallback){const resolve=inputResolveCallback;inputResolveCallback=null;inputModal.classList.remove('active');resolve('')}}
+function configureSkulpt(token){
+ Sk.configure({
+  output:text=>{if(token===runToken)printToConsole(text.replace(/\n$/,''))},
+  read:x=>{if(Sk.builtinFiles===undefined||Sk.builtinFiles['files'][x]===undefined)throw new Error('No se encontró el módulo Python: '+x);return Sk.builtinFiles['files'][x]},
+  inputfun:promptText=>askUserModal(promptText),
+  inputfunTakesPrompt:true,
+  __future__:Sk.python3
+ });
+}
+async function runPython(code,token){
+ if(typeof window.Sk==='undefined')throw new Error('No se pudo cargar el intérprete Python. Comprueba tu conexión e inténtalo de nuevo.');
+ configureSkulpt(token);
+ await Sk.misceval.asyncToPromise(()=>Sk.importMainWithBody('<stdin>',false,code,true));
+}
+async function runJavaScript(code,token){
+ // Captura console.log sin alterar permanentemente la consola global.
+ const frameDoc=webPreview.contentDocument;
+ webPreview.style.display='none';
+ const oldConsole=window.console;
+ const captured={log:(...args)=>{if(token===runToken)printToConsole(args.map(formatValue).join(' '))},info:(...args)=>{if(token===runToken)printToConsole(args.map(formatValue).join(' '))},warn:(...args)=>{if(token===runToken)printToConsole('Aviso: '+args.map(formatValue).join(' '),'system')},error:(...args)=>{if(token===runToken)printToConsole(args.map(formatValue).join(' '),'error')},clear:()=>{if(token===runToken)clearConsole()}};
+ const originalPrompt=window.prompt,originalAlert=window.alert;
+ try{
+  window.console=captured;
+  window.prompt=(message='')=>window.prompt===null?null:prompt(String(message));
+  window.alert=message=>{if(token===runToken)printToConsole(String(message))};
+  // Ejecuta en un iframe aislado para no dejar variables globales ni manejadores en la página del IDE.
+  const safeCode=code.replace(/<\/script/gi,'<\\/script');
+  const html='<!doctype html><html><body><script>const __send=(type,args)=>parent.postMessage({__codeplay:true,token:'+JSON.stringify(token)+',type,args},location.origin);console.log=(...a)=>__send("log",a.map(x=>{try{return typeof x==="string"?x:JSON.stringify(x)??String(x)}catch{return String(x)}}));console.error=(...a)=>__send("error",a.map(String));console.warn=(...a)=>__send("warn",a.map(String));window.onerror=(m)=>__send("error",[m]);window.alert=(m)=>__send("log",[String(m)]);window.prompt=(m)=>parent.postMessage({__codeplay:true,token:'+JSON.stringify(token)+',type:"prompt",args:[String(m||"")]},location.origin);<\\/script><script>'+safeCode+'<\\/script></body></html>';
+  webPreview.style.display='none';webPreview.srcdoc=html;
+  // Give the isolated frame time to execute; output is relayed through postMessage.
+  await new Promise(resolve=>setTimeout(resolve,150));
+ } finally {window.console=oldConsole;window.prompt=originalPrompt;window.alert=originalAlert}
+}
+function formatValue(value){if(typeof value==='string')return value;try{return JSON.stringify(value)??String(value)}catch{return String(value)}}
+window.addEventListener('message',async event=>{
+ const data=event.data;if(!data||data.__codeplay!==true||data.token!==runToken)return;
+ if(data.type==='log')printToConsole((data.args||[]).join(' '));
+ else if(data.type==='error')printToConsole((data.args||[]).join(' '),'error');
+ else if(data.type==='warn')printToConsole('Aviso: '+(data.args||[]).join(' '),'system');
+ else if(data.type==='prompt'){
+  const answer=await askUserModal(data.args?.[0]||'Ingresa un valor:');
+  try{webPreview.contentWindow.postMessage({__codeplayPromptResult:true,token:data.token,value:answer},'*')}catch{}
+ }
+});
+bindClick('runBtn',async()=>{
+ if(isRunning)return;
+ const code=editor.value;files[activeFile]=code;saveStorage();switchView('output');
+ const token=++runToken;isRunning=true;$('runBtn').textContent='⏳ Ejecutando';$('runBtn').disabled=true;
+ consoleOut.replaceChildren();
+ try{
+  if(activeFile.toLowerCase().endsWith('.html')){
+   outputHeaderTitle.textContent='VISTA PREVIA WEB';clearConsoleBtn.style.display='none';consoleOut.style.display='none';webPreview.style.display='block';webPreview.removeAttribute('sandbox');webPreview.srcdoc=code;
+  }else if(activeFile.toLowerCase().endsWith('.py')){
+   outputHeaderTitle.textContent='CONSOLA / PYTHON';clearConsoleBtn.style.display='block';consoleOut.style.display='flex';webPreview.style.display='none';
+   printToConsole('>> Ejecutando Python…','system');await runPython(code,token);if(token===runToken)printToConsole('>> Ejecución finalizada.','system');
+  }else if(activeFile.toLowerCase().endsWith('.js')){
+   outputHeaderTitle.textContent='CONSOLA / JAVASCRIPT';clearConsoleBtn.style.display='block';consoleOut.style.display='flex';webPreview.style.display='none';
+   printToConsole('>> Ejecutando JavaScript en un entorno aislado…','system');
+   // The runner below captures console output and prompts from the sandboxed preview.
+   webPreview.setAttribute('sandbox','allow-scripts allow-modals');webPreview.style.display='block';webPreview.srcdoc='';
+   await new Promise(resolve=>setTimeout(resolve,30));
+   const safeCode=code.replace(/<\/script/gi,'<\\/script');
+   const frameScript=`<script>
+   (()=>{const send=(type,args)=>parent.postMessage({__codeplay:true,token:${JSON.stringify(token)},type,args},'*');
+   console.log=(...a)=>send('log',a.map(x=>{try{return typeof x==='string'?x:JSON.stringify(x)??String(x)}catch{return String(x)}}));
+   console.info=console.log;console.warn=(...a)=>send('warn',a.map(String));console.error=(...a)=>send('error',a.map(String));
+   window.alert=m=>send('log',[String(m)]);
+   let promptResolve=null,promptId=0;
+   
+   window.onerror=(m,src,line,col)=>send('error',[String(m)+' (línea '+line+')']);
+   window.addEventListener('unhandledrejection',e=>send('error',[String(e.reason)]));
+   
+   })();<\\/script><script>${safeCode}<\\/script>`;
+   webPreview.srcdoc='<!doctype html><html><body>'+frameScript+'</body></html>';
+   await new Promise(resolve=>setTimeout(resolve,250));if(token===runToken)printToConsole('>> Ejecución iniciada.','system');
+  }else{
+   outputHeaderTitle.textContent='CONSOLA / RESULTADO';clearConsoleBtn.style.display='block';consoleOut.style.display='flex';webPreview.style.display='none';
+   printToConsole('Tipo de archivo no compatible. Usa .py, .js o .html.','error')
+  }
+ }catch(err){if(token===runToken)printToConsole(err&&err.stack?err.stack:String(err),'error')}
+ finally{if(token===runToken){isRunning=false;$('runBtn').disabled=false;$('runBtn').textContent='▶ Ejecutar'}}
+});
+function initialize(){
+ editor.value=files[activeFile]||'';updateFileLabel();renderFileList();switchView('editor');
+ outputHeaderTitle.textContent='CONSOLA / RESULTADO';webPreview.style.display='none';
+}
+initialize();
+
+// Public bridges for the advanced project panel.
+window.openCodePlayFile=openFile;
+window.syncCodePlayFiles=function(){const fresh=readJSON(STORAGE_FILES,{});if(fresh&&typeof fresh==='object'&&!Array.isArray(fresh)){files=fresh;if(typeof files[activeFile]!=='string')files[activeFile]=editor.value;renderFileList();}};
+
+// Editor enhancements: line numbers, cursor position, find-in-file and keyboard shortcuts.
+const lineNumbers=$('lineNumbers'), languageLabel=$('languageLabel'), saveStatus=$('saveStatus');
+const cursorStatus=$('cursorStatus'), findPanel=$('findPanel'), findInput=$('findInput'), findCount=$('findCount');
+let saveStatusTimer=null;
+function updateEditorChrome(){
+ const lines=editor.value.split('\n').length;
+ lineNumbers.textContent=Array.from({length:lines},(_,i)=>i+1).join('\n');
+ lineNumbers.scrollTop=editor.scrollTop;
+ const pos=editor.selectionStart,before=editor.value.slice(0,pos),line=before.split('\n').length,col=before.length-before.lastIndexOf('\n');
+ cursorStatus.textContent='Lín '+line+', Col '+col;
+ const ext=activeFile.split('.').pop().toLowerCase();
+ languageLabel.textContent=ext==='py'?'PYTHON':ext==='js'?'JAVASCRIPT':ext==='html'?'HTML':'TEXTO';
+}
+// Resaltado de sintaxis ligero y autocompletado local (sin dependencias adicionales).
+const syntaxLayer=$('syntaxLayer'), autocompletePopup=$('autocompletePopup');
+let completionItems=[], completionIndex=0, completionToken='';
+const completions={
+ py:[['print','función'],['input','función'],['len','función'],['range','función'],['str','tipo'],['int','tipo'],['float','tipo'],['list','tipo'],['dict','tipo'],['def','palabra clave'],['class','palabra clave'],['if','palabra clave'],['elif','palabra clave'],['else','palabra clave'],['for','palabra clave'],['while','palabra clave'],['return','palabra clave'],['import','palabra clave'],['from','palabra clave'],['True','valor'],['False','valor'],['None','valor'],['and','operador'],['or','operador'],['not','operador'],['try','palabra clave'],['except','palabra clave'],['with','palabra clave'],['enumerate','función'],['sum','función'],['max','función'],['min','función']],
+ js:[['console.log','consola'],['console.error','consola'],['console.warn','consola'],['const','palabra clave'],['let','palabra clave'],['var','palabra clave'],['function','palabra clave'],['return','palabra clave'],['if','palabra clave'],['else','palabra clave'],['for','palabra clave'],['while','palabra clave'],['class','palabra clave'],['new','palabra clave'],['async','palabra clave'],['await','palabra clave'],['true','valor'],['false','valor'],['null','valor'],['undefined','valor'],['document','web'],['window','web'],['Math','objeto'],['JSON','objeto'],['Array','objeto'],['Object','objeto'],['setTimeout','función'],['addEventListener','método']],
+ html:[['div','etiqueta'],['section','etiqueta'],['main','etiqueta'],['header','etiqueta'],['footer','etiqueta'],['button','etiqueta'],['script','etiqueta'],['style','etiqueta'],['p','etiqueta'],['h1','etiqueta'],['a','etiqueta'],['img','etiqueta'],['input','etiqueta'],['class','atributo'],['id','atributo'],['href','atributo'],['src','atributo'],['alt','atributo'],['style','atributo'],['onclick','atributo']]
+};
+function escapeHTML(value){return value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function highlightCode(){
+ const ext=activeFile.split('.').pop().toLowerCase();let code=editor.value;
+ if(ext==='html'){
+  let safe=escapeHTML(code);
+  safe=safe.replace(/(&lt;!--[\s\S]*?--&gt;)/g,'<span class="syntax-comment">$1</span>');
+  safe=safe.replace(/(&lt;\/?)([a-zA-Z][\w-]*)([\s\S]*?)(\/??&gt;)/g,(m,a,tag,attrs,end)=>a+'<span class="syntax-tag">'+tag+'</span>'+attrs.replace(/([\w-]+)(=)/g,'<span class="syntax-attr">$1</span>$2')+end);
+  syntaxLayer.innerHTML=safe+'\n';return;
+ }
+ let safe=escapeHTML(code);
+ safe=safe.replace(/(#.*$|\/\/.*$)/gm,'<span class="syntax-comment">$1</span>');
+ safe=safe.replace(/(&quot;.*?&quot;|&#39;.*?&#39;|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)/g,'<span class="syntax-string">$1</span>');
+ const words=ext==='py'?'and as assert async await break class continue def del elif else except False finally for from global if import in is lambda None nonlocal not or pass raise return True try while with yield print input len range str int float list dict set tuple': 'async await break case catch class const continue debugger default delete do else export extends false finally for from function if import in instanceof let new null of return static super switch this throw true try typeof undefined var void while with yield console log';
+ const kw=new Set(words.split(/\s+/));
+ safe=safe.replace(/\b[A-Za-z_$][\w$]*\b/g,word=>kw.has(word)?'<span class="syntax-keyword">'+word+'</span>':word);
+ safe=safe.replace(/\b\d+(?:\.\d+)?\b/g,'<span class="syntax-number">$&</span>');
+ safe=safe.replace(/\b([A-Za-z_$][\w$]*)(?=\s*\()/g,'<span class="syntax-function">$1</span>');
+ syntaxLayer.innerHTML=safe+'\n';
+}
+function closeAutocomplete(){autocompletePopup.classList.remove('active');completionItems=[];}
+function showAutocomplete(){
+ const pos=editor.selectionStart, before=editor.value.slice(0,pos), match=before.match(/[A-Za-z_$][\w$]*$/);
+ if(!match||match[0].length<1||editor.selectionStart!==editor.selectionEnd){closeAutocomplete();return}
+ const ext=activeFile.split('.').pop().toLowerCase(), pool=completions[ext]||completions.js, term=match[0].toLowerCase();
+ completionToken=match[0];completionItems=pool.filter(([word])=>word.toLowerCase().startsWith(term)&&word!==completionToken).slice(0,7);
+ if(!completionItems.length){closeAutocomplete();return}
+ completionIndex=0;autocompletePopup.replaceChildren();completionItems.forEach(([word,kind],i)=>{const item=document.createElement('div');item.className='autocomplete-option'+(i===0?' active':'');item.setAttribute('role','option');const label=document.createElement('span');label.textContent=word;const small=document.createElement('small');small.textContent=kind;item.append(label,small);item.addEventListener('mousedown',e=>{e.preventDefault();applyCompletion(word)});autocompletePopup.appendChild(item)});
+ const lines=before.split('\n');autocompletePopup.style.top=Math.min( Math.max(32, (lines.length*21)+10), Math.max(32,editor.clientHeight-200))+'px';autocompletePopup.classList.add('active');
+}
+function applyCompletion(word){const end=editor.selectionStart,start=end-completionToken.length;editor.setRangeText(word,start,end,'end');closeAutocomplete();editor.focus();updateEditorChrome();highlightCode();markUnsaved();}
+function moveCompletion(delta){if(!completionItems.length)return;completionIndex=(completionIndex+delta+completionItems.length)%completionItems.length;[...autocompletePopup.children].forEach((el,i)=>el.classList.toggle('active',i===completionIndex));}
+function markUnsaved(){saveStatus.textContent='Editando…';saveStatus.style.color='#fbbf24';clearTimeout(saveStatusTimer);saveStatusTimer=setTimeout(()=>{saveStatus.textContent='Guardado';saveStatus.style.color='';},650)}
+editor.addEventListener('scroll',()=>{lineNumbers.scrollTop=editor.scrollTop;syntaxLayer.scrollTop=editor.scrollTop;syntaxLayer.scrollLeft=editor.scrollLeft});
+editor.addEventListener('input',()=>{updateEditorChrome();highlightCode();markUnsaved();showAutocomplete()});
+editor.addEventListener('click',()=>{updateEditorChrome();showAutocomplete()});editor.addEventListener('keyup',e=>{updateEditorChrome();if(!['ArrowUp','ArrowDown','Enter','Tab'].includes(e.key))showAutocomplete()});
+bindClick('findBtn',()=>{findPanel.classList.toggle('active');if(findPanel.classList.contains('active')){findInput.focus();findInput.select()}});
+bindClick('findCloseBtn',()=>{findPanel.classList.remove('active');findInput.value='';findCount.textContent='0 resultados';editor.focus()});
+findInput.addEventListener('input',()=>{
+ const needle=findInput.value;if(!needle){findCount.textContent='0 resultados';return}
+ let count=0,start=0,source=editor.value.toLowerCase(),term=needle.toLowerCase();
+ while((start=source.indexOf(term,start))!==-1){count++;start+=term.length}
+ findCount.textContent=count+' resultado'+(count===1?'':'s');
+ const index=source.indexOf(term);if(index>=0){editor.focus();editor.setSelectionRange(index,index+term.length)}
+});
+bindClick('formatHintBtn',()=>alert('Atajos de CodePlay Pro:\\n\\nTab: insertar sangría\\nCtrl + Enter: ejecutar código\\nCtrl + F: buscar texto\\nCtrl + S: guardar en el navegador\\n\\nLos archivos se guardan automáticamente.'));
+bindClick('copyConsoleBtn',async()=>{const text=consoleOut.innerText;try{await navigator.clipboard.writeText(text);printToConsole('>> Salida copiada al portapapeles.','system')}catch{printToConsole('No se pudo copiar automáticamente. Selecciona el texto de la consola.','error')}});
+editor.addEventListener('keydown',e=>{
+ if(autocompletePopup.classList.contains('active')&&e.key==='ArrowDown'){e.preventDefault();moveCompletion(1);return}
+ if(autocompletePopup.classList.contains('active')&&e.key==='ArrowUp'){e.preventDefault();moveCompletion(-1);return}
+ if(autocompletePopup.classList.contains('active')&&(e.key==='Tab'||e.key==='Enter')){e.preventDefault();applyCompletion(completionItems[completionIndex][0]);return}
+ if(e.key==='Escape'){closeAutocomplete()}
+ if((e.ctrlKey||e.metaKey)&&e.code==='Space'){e.preventDefault();const before=editor.value.slice(0,editor.selectionStart);completionToken=(before.match(/[A-Za-z_$][\w$]*$/)||['',''])[0];if(!completionToken)completionToken='';const ext=activeFile.split('.').pop().toLowerCase();completionItems=(completions[ext]||completions.js).slice(0,7);completionIndex=0;autocompletePopup.replaceChildren();completionItems.forEach(([word,kind],i)=>{const item=document.createElement('div');item.className='autocomplete-option'+(i===0?' active':'');const label=document.createElement('span');label.textContent=word;const small=document.createElement('small');small.textContent=kind;item.append(label,small);item.addEventListener('mousedown',ev=>{ev.preventDefault();applyCompletion(word)});autocompletePopup.appendChild(item)});autocompletePopup.classList.add('active');return}
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='f'){e.preventDefault();findPanel.classList.add('active');findInput.focus();findInput.select()}
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();saveStorage();saveStatus.textContent='Guardado';}
+ if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();$('runBtn').click()}
+});
+highlightCode();
+const originalUpdateFileLabel=updateFileLabel;
+updateFileLabel=function(){originalUpdateFileLabel();updateEditorChrome();if(typeof syntaxLayer!=='undefined')highlightCode();closeAutocomplete()};
+updateEditorChrome();highlightCode();
+window.addEventListener('beforeunload',()=>{files[activeFile]=editor.value;try{localStorage.setItem(STORAGE_FILES,JSON.stringify(files));localStorage.setItem(STORAGE_ACTIVE,activeFile)}catch{}});
+})();
+</script>
+<style>
+/* CodePlay Pro 3.0 professional tools */
+:root{--panel:#101014;--panel-border:#303039;--editor-bg:#020203;--text-main:#f4f4f5}
+#cpToolsFab{position:fixed;right:12px;bottom:62px;z-index:2500;border-radius:999px;background:var(--accent-color);color:#03130d;border:0;box-shadow:0 6px 24px #0009;font-size:12px;padding:12px 15px}
+#cpToolsModal{position:fixed;inset:0;z-index:6000;background:#050507f5;display:none;flex-direction:column;color:#f4f4f5;padding:0;backdrop-filter:blur(12px)}
+#cpToolsModal.active{display:flex}.cp-tools-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px;border-bottom:1px solid #303039;background:#0e0e12}.cp-tools-head strong{font-size:14px;letter-spacing:.5px}.cp-tools-tabs{display:flex;gap:6px;padding:10px;overflow-x:auto;border-bottom:1px solid #25252b;background:#09090b}.cp-tools-tabs button{white-space:nowrap;padding:9px 11px;text-transform:none}.cp-tools-tabs button.active{background:var(--accent-color);color:#03130d;border-color:var(--accent-color)}.cp-tool-content{display:none;flex:1;min-height:0;overflow:auto;padding:14px;gap:12px;flex-direction:column}.cp-tool-content.active{display:flex}.cp-card{background:#111115;border:1px solid #303039;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:9px}.cp-card h3{font-size:13px;color:var(--accent-color)}.cp-muted{color:#a1a1aa;font-size:11px;line-height:1.5}.cp-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.cp-row input,.cp-row select,.cp-tool-content input,.cp-tool-content textarea,.cp-tool-content select{min-width:0;background:#050506;color:#f4f4f5;border:1px solid #3f3f46;border-radius:6px;padding:10px;font:12px ui-monospace,monospace}.cp-row input{flex:1}.cp-tool-content textarea{width:100%;min-height:90px;resize:vertical}.cp-primary{background:var(--accent-color);color:#03130d;border-color:var(--accent-color)}.cp-file-row{display:flex;align-items:center;gap:8px;padding:9px;background:#09090b;border:1px solid #27272a;border-radius:6px}.cp-file-row span{flex:1;overflow-wrap:anywhere;font-size:12px}.cp-file-row button{padding:6px 8px;text-transform:none}.cp-terminal{background:#020203;border:1px solid #303039;border-radius:8px;padding:12px;min-height:210px;max-height:42vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.6 ui-monospace,monospace;color:#a7f3d0}.cp-terminal-form{display:flex;gap:7px}.cp-terminal-form input{flex:1;min-width:0}.cp-preview-wrap{display:flex;flex:1;min-height:260px;border:1px solid #303039;border-radius:8px;overflow:hidden;background:white}.cp-preview-wrap iframe{width:100%;min-height:260px;background:white}.cp-theme-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.cp-theme{min-height:70px;border-radius:8px;text-align:left;text-transform:none}.cp-theme small{display:block;margin-top:5px;opacity:.7}.cp-challenge{padding:12px;border-radius:8px;background:#09090b;border:1px solid #303039;display:flex;flex-direction:column;gap:8px}.cp-challenge h4{font-size:13px}.cp-challenge p{font-size:12px;color:#c4c4cc;line-height:1.5}.cp-pill{font-size:10px;color:var(--accent-color)}
+#cpTab-games .cp-card button{min-height:42px}.cp-game-number{font-size:28px;color:var(--accent-color);font-weight:800}.cp-game-action{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.cp-diff-added{color:#86efac}.cp-diff-removed{color:#fca5a5}.cp-snapshot{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #303039;font-size:11px}.cp-snapshot span{overflow-wrap:anywhere}.cp-snapshot button{padding:5px 7px;text-transform:none}
+@media(max-width:600px){#cpToolsFab{bottom:58px;right:8px;padding:11px 12px}.cp-tools-head{padding:11px}.cp-tool-content{padding:10px}.cp-tools-tabs{padding:8px}.cp-tools-tabs button{font-size:10px;padding:8px}.cp-preview-wrap{min-height:220px}}
+@media(prefers-reduced-motion:reduce){#cpToolsModal *{scroll-behavior:auto!important;transition:none!important}}
+</style>
+<button id="cpToolsFab" aria-label="Abrir herramientas avanzadas">🧰 CodePlay 3.0</button>
+<section id="cpToolsModal" aria-label="Herramientas avanzadas de CodePlay Pro" role="dialog" aria-modal="true">
+ <div class="cp-tools-head"><strong>⚡ CODEPLAY PRO <span style="color:var(--accent-color)">3.0</span></strong><div class="cp-row"><span id="cpToolsFileLabel" class="cp-muted">Proyecto actual</span><button id="cpToolsClose">✕ Cerrar</button></div></div>
+ <nav class="cp-tools-tabs" aria-label="Herramientas">
+  <button data-tab="projects" class="active">📁 Proyectos</button><button data-tab="live">🌐 Vista en vivo</button><button data-tab="debug">🧪 Depurar</button><button data-tab="history">↶ Historial</button><button data-tab="themes">🎨 Temas</button><button data-tab="terminal">⌘ Terminal</button><button data-tab="ai">✨ Asistente IA</button><button data-tab="learn">🎓 Academia</button><button data-tab="games">🎮 Juegos</button><button data-tab="git">🌿 Control de cambios</button>
+ </nav>
+ <div id="cpTab-projects" class="cp-tool-content active">
+  <div class="cp-card"><h3>Crear archivo o carpeta virtual</h3><p class="cp-muted">Los archivos se organizan con rutas como <code>mi-proyecto/src/app.js</code>. Se guardan localmente en este navegador.</p><div class="cp-row"><input id="cpNewPath" placeholder="proyecto/src/app.js" aria-label="Ruta del archivo nuevo"><select id="cpNewType" aria-label="Plantilla"><option value="js">JavaScript</option><option value="py">Python</option><option value="html">HTML</option><option value="css">CSS</option><option value="txt">Texto</option></select><button id="cpCreateFile" class="cp-primary">Crear archivo</button></div><div class="cp-row"><input id="cpFolderName" placeholder="Nombre de carpeta/proyecto" aria-label="Nombre de carpeta"><button id="cpCreateFolder">Crear carpeta</button><button id="cpExportZip" class="cp-primary">Exportar ZIP</button></div><p id="cpProjectMsg" class="cp-muted" aria-live="polite"></p></div>
+  <div class="cp-card"><h3>Archivos del proyecto</h3><div id="cpProjectFiles" class="cp-muted">Cargando archivos…</div></div>
+ </div>
+ <div id="cpTab-live" class="cp-tool-content"><div class="cp-card"><h3>Vista previa HTML/CSS/JS en vivo</h3><p class="cp-muted">Se actualiza mientras editas un archivo HTML. Resuelve archivos CSS y JS locales enlazados desde las rutas guardadas del proyecto. La vista previa está aislada en un iframe.</p><div class="cp-row"><button id="cpRefreshPreview" class="cp-primary">Actualizar ahora</button><label class="cp-muted"><input type="checkbox" id="cpAutoPreview" checked> Actualización automática</label></div></div><div class="cp-preview-wrap"><iframe id="cpLiveFrame" title="Vista previa en vivo" sandbox="allow-scripts allow-forms"></iframe></div></div>
+ <div id="cpTab-debug" class="cp-tool-content"><div class="cp-card"><h3>Analizador rápido</h3><p class="cp-muted">Revisa errores frecuentes sin ejecutar código peligroso ni enviar tu código a un servidor.</p><div class="cp-row"><button id="cpRunDebug" class="cp-primary">Analizar archivo actual</button><button id="cpCopyDebug">Copiar informe</button></div><pre id="cpDebugOutput" class="cp-terminal" style="color:#d4d4d8">Listo para analizar.</pre></div><div class="cp-card"><h3>Consejo</h3><p class="cp-muted">El análisis es heurístico, no sustituye a un depurador completo del lenguaje. Ejecuta el programa y revisa la consola para confirmar el comportamiento.</p></div></div>
+ <div id="cpTab-history" class="cp-tool-content"><div class="cp-card"><h3>Versiones guardadas</h3><p class="cp-muted">Crea puntos de restauración antes de cambios importantes. El historial se conserva en el almacenamiento local de este navegador.</p><div class="cp-row"><button id="cpSaveVersion" class="cp-primary">Guardar versión actual</button><button id="cpClearHistory">Borrar historial</button></div><div id="cpHistoryList"></div></div></div>
+ <div id="cpTab-themes" class="cp-tool-content"><div class="cp-card"><h3>Personalización visual</h3><p class="cp-muted">Cambia el color de acento y el fondo del editor. La preferencia se guarda en este dispositivo.</p><div class="cp-theme-grid"><button class="cp-theme" data-accent="#10b981" data-bg="#020203" style="background:#020203;border-color:#10b981;color:#10b981">Matrix<small>Verde / negro</small></button><button class="cp-theme" data-accent="#38bdf8" data-bg="#07111f" style="background:#07111f;border-color:#38bdf8;color:#38bdf8">Océano<small>Azul / profundo</small></button><button class="cp-theme" data-accent="#c084fc" data-bg="#10091a" style="background:#10091a;border-color:#c084fc;color:#c084fc">Nebulosa<small>Violeta / oscuro</small></button><button class="cp-theme" data-accent="#fb7185" data-bg="#18090d" style="background:#18090d;border-color:#fb7185;color:#fb7185">Cyberpunk<small>Rosa / carbón</small></button><button class="cp-theme" data-accent="#fbbf24" data-bg="#171207" style="background:#171207;border-color:#fbbf24;color:#fbbf24">Ámbar<small>Dorado / noche</small></button><button class="cp-theme" data-accent="#e4e4e7" data-bg="#18181b" style="background:#18181b;border-color:#e4e4e7;color:#e4e4e7">Gris claro<small>Monocromo</small></button></div><div class="cp-row"><label class="cp-muted">Color personalizado <input type="color" id="cpCustomAccent" value="#10b981"></label><label class="cp-muted">Tamaño de letra <select id="cpFontSize"><option>12</option><option selected>14</option><option>16</option><option>18</option><option>20</option></select> px</label></div><button id="cpResetTheme">Restaurar tema</button></div></div>
+ <div id="cpTab-terminal" class="cp-tool-content"><div class="cp-card"><h3>Terminal simulada segura</h3><p class="cp-muted">Esta terminal no ejecuta comandos del sistema operativo. Comandos disponibles: <code>help</code>, <code>ls</code>, <code>pwd</code>, <code>cat ruta</code>, <code>clear</code>, <code>run</code>.</p><div id="cpTerminalOut" class="cp-terminal" aria-live="polite">CodePlay Terminal 3.0 · Escribe help para ver los comandos disponibles.</div><form id="cpTerminalForm" class="cp-terminal-form"><input id="cpTerminalInput" autocomplete="off" placeholder="help" aria-label="Comando de terminal"><button class="cp-primary" type="submit">Ejecutar</button></form></div></div>
+ <div id="cpTab-ai" class="cp-tool-content"><div class="cp-card"><h3>Asistente de programación</h3><p class="cp-muted">Modo local: explica el archivo, busca patrones de errores y genera ejemplos. No es un modelo de IA conectado; no se envía tu código a ningún servicio.</p><label class="cp-muted" for="cpAiPrompt">¿Qué necesitas?</label><textarea id="cpAiPrompt" placeholder="Ej.: explica este código, busca errores o crea una función que valide un correo…"></textarea><div class="cp-row"><button id="cpAiAsk" class="cp-primary">Analizar y responder</button><button id="cpAiInsert">Insertar respuesta en editor</button></div><div id="cpAiOutput" class="cp-terminal" style="color:#d4d4d8" aria-live="polite">Tu respuesta aparecerá aquí.</div></div></div>
+ <div id="cpTab-games" class="cp-tool-content"><div class="cp-card"><h3>Laboratorio de juegos</h3><p class="cp-muted">Minijuegos funcionales en esta página; no requieren servicios externos.</p><div class="cp-row"><button id="cpGameGuess" class="cp-primary">Adivina el número</button><button id="cpGameClick">Prueba de reflejos</button></div><div id="cpGameArea" class="cp-card" style="min-height:130px"><p class="cp-muted">Elige un juego para empezar.</p></div></div><div class="cp-card"><h3>Crear tu propio juego</h3><p class="cp-muted">Abre una plantilla Canvas 2D en el editor para modificarla y ejecutarla como HTML.</p><button id="cpGameTemplate" class="cp-primary">Abrir plantilla de juego 2D</button></div></div>
+ <div id="cpTab-git" class="cp-tool-content"><div class="cp-card"><h3>Control de versiones local</h3><p class="cp-muted">Este módulo guarda snapshots y muestra diferencias locales. No es Git real ni se conecta a repositorios remotos; Git completo requiere un backend o una herramienta compatible.</p><div class="cp-row"><input id="cpCommitMessage" placeholder="Mensaje del snapshot (ej. versión inicial)" aria-label="Mensaje del snapshot"><button id="cpGitCommit" class="cp-primary">Guardar snapshot</button></div><div class="cp-row"><button id="cpGitCompare">Comparar con último snapshot</button><button id="cpGitExport">Exportar registro JSON</button></div><pre id="cpGitOutput" class="cp-terminal" style="color:#d4d4d8">Todavía no hay snapshots locales.</pre><div id="cpGitHistory"></div></div></div>
+ <div id="cpTab-learn" class="cp-tool-content"><div class="cp-card"><h3>Academia de programación</h3><p class="cp-muted">Elige un reto, lee la consigna y abre una plantilla en el editor para practicar.</p><div id="cpChallenges"></div></div><div class="cp-card"><h3>Ruta sugerida</h3><p class="cp-muted">1. Variables y tipos · 2. Condiciones · 3. Bucles · 4. Funciones · 5. Listas y objetos · 6. DOM y eventos. Ejecuta tus respuestas y comprueba la salida.</p></div></div>
+</section>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id), editor=$('codeEditor'); if(!editor)return;
+const modal=$('cpToolsModal'), liveFrame=$('cpLiveFrame'); let lastAiResponse='', previewTimer=null, terminalHistory=[];
+const filesKey='cp_files_system_v2', activeKey='cp_active_file_v2', histKey='cp_version_history_v1', themeKey='cp_custom_theme_v1';
+function readFiles(){try{const f=JSON.parse(localStorage.getItem(filesKey)||'{}');return f&&typeof f==='object'?f:{}}catch{return {}}}
+function activeName(){return $('currentFileName')?.textContent||localStorage.getItem(activeKey)||'script.py'}
+function saveEditor(){const f=readFiles();f[activeName()]=editor.value;try{localStorage.setItem(filesKey,JSON.stringify(f));localStorage.setItem(activeKey,activeName())}catch{};return f}
+function refreshProjectList(){const f=saveEditor(),box=$('cpProjectFiles');box.replaceChildren();const names=Object.keys(f).sort();if(!names.length){box.textContent='No hay archivos guardados.';return} names.forEach(name=>{const row=document.createElement('div');row.className='cp-file-row';const span=document.createElement('span');span.textContent='📄 '+name;const open=document.createElement('button');open.textContent='Abrir';open.addEventListener('click',()=>{if(name===activeName()){editor.focus();return}const oldName=activeName();f[oldName]=editor.value;localStorage.setItem(filesKey,JSON.stringify(f));if(typeof window.openCodePlayFile==='function')window.openCodePlayFile(name);else{ // Synchronize with the existing IDE through its visible file list when available.
+ const sidebar=$('openSidebarBtn');sidebar?.click();const target=[...document.querySelectorAll('.file-select')].find(b=>b.textContent===name);if(target)target.click();else{$('cpProjectMsg').textContent='Este archivo existe en almacenamiento pero no está en la lista del editor. Recarga la página para sincronizar.'}
+ }setTimeout(()=>{refreshProjectList();refreshPreview()},50)});const del=document.createElement('button');del.textContent='Eliminar';del.addEventListener('click',()=>{if(name===activeName()){alert('No puedes eliminar el archivo abierto. Abre otro archivo primero.');return}if(!confirm('¿Eliminar '+name+'?'))return;const current=readFiles();delete current[name];localStorage.setItem(filesKey,JSON.stringify(current));window.syncCodePlayFiles?.();refreshProjectList()});row.append(span,open,del);box.appendChild(row)})}
+function setTab(tab){document.querySelectorAll('.cp-tools-tabs [data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));document.querySelectorAll('.cp-tool-content').forEach(el=>el.classList.toggle('active',el.id==='cpTab-'+tab));if(tab==='projects')refreshProjectList();if(tab==='history')renderHistory();if(tab==='live')refreshPreview();if(tab==='learn')renderChallenges();$('cpToolsFileLabel').textContent=activeName()}
+$('cpToolsFab').addEventListener('click',()=>{modal.classList.add('active');setTab('projects')});$('cpToolsClose').addEventListener('click',()=>modal.classList.remove('active'));document.querySelectorAll('.cp-tools-tabs [data-tab]').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('active'))modal.classList.remove('active')});
+function setEditorCode(code){editor.value=code;editor.dispatchEvent(new Event('input',{bubbles:true}));editor.focus();saveEditor();if(typeof window.highlightCode==='function')window.highlightCode();refreshProjectList()}
+$('cpCreateFile').addEventListener('click',()=>{const path=$('cpNewPath').value.trim().replace(/^\/+|\.\.(?=\/)/g,'');if(!path||!/[.][a-z0-9]+$/i.test(path)){ $('cpProjectMsg').textContent='Escribe una ruta con nombre y extensión, por ejemplo sitio/index.html.';return}const f=saveEditor();if(Object.prototype.hasOwnProperty.call(f,path)&&!confirm('El archivo ya existe. ¿Sobrescribirlo?'))return;const ext=($('cpNewType').value||path.split('.').pop()).toLowerCase();const templates={js:'// Nuevo archivo JavaScript\nconsole.log("Hola, mundo");\n',py:'# Nuevo archivo Python\nprint("Hola, mundo")\n',html:'<!doctype html>\n<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mi proyecto</title></head><body><h1>Hola, mundo</h1></body></html>',css:'/* Estilos del proyecto */\nbody { font-family: sans-serif; }\n',txt:''};f[path]=templates[ext]??'';try{localStorage.setItem(filesKey,JSON.stringify(f));window.syncCodePlayFiles?.();$('cpProjectMsg').textContent='Creado: '+path+'. Ya aparece en la lista de archivos.';refreshProjectList()}catch(e){$('cpProjectMsg').textContent='No se pudo guardar: '+e.message}});
+$('cpCreateFolder').addEventListener('click',()=>{const folder=$('cpFolderName').value.trim().replace(/^\/+|\.+$/g,'');if(!folder)return;const f=saveEditor(),marker=folder.replace(/\/$/,'')+'/.keep';if(!f[marker])f[marker]='# Carpeta de proyecto\n';localStorage.setItem(filesKey,JSON.stringify(f));window.syncCodePlayFiles?.();$('cpProjectMsg').textContent='Carpeta virtual creada: '+folder+' (se incluirá en la exportación ZIP).';refreshProjectList()});
+$('cpExportZip').addEventListener('click',async()=>{const f=saveEditor();try{if(!window.JSZip){$('cpProjectMsg').textContent='No se pudo cargar JSZip. Comprueba la conexión a Internet y vuelve a intentar.';return}const zip=new JSZip();Object.entries(f).forEach(([name,content])=>zip.file(name,content));zip.file('README.txt','Proyecto exportado desde CodePlay Pro.\n');const blob=await zip.generateAsync({type:'blob'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='codeplay-proyecto.zip';a.click();URL.revokeObjectURL(url);$('cpProjectMsg').textContent='ZIP generado con '+Object.keys(f).length+' archivos.'}catch(e){$('cpProjectMsg').textContent='Error al exportar ZIP: '+e.message}});
+function refreshPreview(){saveEditor();if(!$('cpAutoPreview').checked&&!arguments[0])return;const name=activeName().toLowerCase();if(!name.endsWith('.html')){liveFrame.srcdoc='<!doctype html><body style="font:16px sans-serif;padding:20px;color:#333"><h2>Vista previa disponible para HTML</h2><p>Abre o crea un archivo .html para ver el resultado aquí.</p></body>';return}const code=editor.value.replace(/<script\b/gi,'<script');liveFrame.srcdoc=code}
+$('cpRefreshPreview').addEventListener('click',()=>refreshPreview(true));$('cpAutoPreview').addEventListener('change',()=>{if($('cpAutoPreview').checked)refreshPreview(true)});editor.addEventListener('input',()=>{if(modal.classList.contains('active')&&$('cpAutoPreview').checked){clearTimeout(previewTimer);previewTimer=setTimeout(()=>refreshPreview(true),350)}if(modal.classList.contains('active'))$('cpToolsFileLabel').textContent=activeName()});
+// Robust auto-pair insertion; existing Tab indentation remains intact.
+editor.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const pairs={'(':')','[':']','{':'}','"':'"',"'":"'",'`':'`'};const close=pairs[e.key];if(close&&editor.selectionStart===editor.selectionEnd){const p=editor.selectionStart;if(e.key==='"'||e.key==="'"||e.key==='`'){if(editor.value[p]===e.key){e.preventDefault();editor.setSelectionRange(p+1,p+1);return}}e.preventDefault();editor.setRangeText(e.key+close,p,p,'end');editor.setSelectionRange(p+1,p+1);editor.dispatchEvent(new Event('input',{bubbles:true}));return}const closers=Object.values(pairs);if(closers.includes(e.key)&&editor.value[editor.selectionStart]===e.key){e.preventDefault();editor.setSelectionRange(editor.selectionStart+1,editor.selectionStart+1)} });
+// Lightweight static diagnostics, intentionally no eval.
+$('cpRunDebug').addEventListener('click',()=>{const code=editor.value,ext=activeName().split('.').pop().toLowerCase(),issues=[];const lines=code.split('\n');let quote=null,escaped=false,stack=[],comment=false;const pairs={')':'(',']':'[','}':'{'};for(let i=0;i<lines.length;i++){const line=lines[i];if(ext==='py'&&/^\s*\S/.test(line)&&/\b(if|elif|else|for|while|def|class|try|except|with)\b.*[^:]\s*(#.*)?$/.test(line)&&!line.trim().startsWith('#')&&!line.includes('lambda'))issues.push('Línea '+(i+1)+': quizá falta “:” al final de una instrucción Python.');if(ext!=='html'){let q=null,esc=false;for(const ch of line){if(esc){esc=false;continue}if(ch==='\\'){esc=true;continue}if(q){if(ch===q)q=null;continue}if(ch==='"'||ch==="'"||ch==='`'){q=ch;continue}if('([{'.includes(ch))stack.push({ch,line:i+1});else if(pairs[ch]){const last=stack.pop();if(!last||last.ch!==pairs[ch])issues.push('Línea '+(i+1)+': delimitador “'+ch+'” sin pareja o en orden incorrecto.')}}if(q)issues.push('Línea '+(i+1)+': posible cadena sin cerrar.')}}if(ext==='html'){const opens=(code.match(/<([a-z][a-z0-9]*)\b(?![^>]*\/)>/gi)||[]).length,closes=(code.match(/<\/([a-z][a-z0-9]*)\s*>/gi)||[]).length;if(opens>closes+3)issues.push('HTML: revisa que las etiquetas abiertas tengan su cierre.');if(!/<!doctype\s+html/i.test(code))issues.push('HTML: considera añadir <!doctype html>.')}if(stack.length)issues.push('Posible delimitador sin cerrar “'+stack[stack.length-1].ch+'” abierto en línea '+stack[stack.length-1].line+'.');if(!code.trim())issues.push('El archivo está vacío.');$('cpDebugOutput').textContent=issues.length?'Se encontraron '+issues.length+' posible(s) problema(s):\n\n• '+issues.join('\n• '):'✓ No se detectaron problemas comunes en el análisis rápido.\n\nEsto no garantiza que el programa se ejecute correctamente.'});
+$('cpCopyDebug').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('cpDebugOutput').textContent)}catch{alert('No se pudo copiar automáticamente. Selecciona el informe y cópialo.')}});
+function readHistory(){try{return JSON.parse(localStorage.getItem(histKey)||'{}')}catch{return {}}}function renderHistory(){const all=readHistory(),arr=all[activeName()]||[],box=$('cpHistoryList');box.replaceChildren();if(!arr.length){box.textContent='Todavía no hay versiones guardadas para este archivo.';return}arr.slice().reverse().forEach((v,reverseIndex)=>{const index=arr.length-1-reverseIndex,row=document.createElement('div');row.className='cp-file-row';const label=document.createElement('span');label.textContent=new Date(v.time).toLocaleString()+' · '+v.code.length+' caracteres';const restore=document.createElement('button');restore.textContent='Restaurar';restore.addEventListener('click',()=>{if(!confirm('¿Restaurar esta versión? Guarda primero una versión del estado actual si quieres conservarlo.'))return;setEditorCode(v.code);$('cpToolsFileLabel').textContent=activeName();});const download=document.createElement('button');download.textContent='Descargar';download.addEventListener('click',()=>{const blob=new Blob([v.code],{type:'text/plain'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=activeName()+'.version-'+(index+1);a.click();URL.revokeObjectURL(url)});row.append(label,restore,download);box.appendChild(row)})}
+$('cpSaveVersion').addEventListener('click',()=>{const all=readHistory(),name=activeName(),arr=all[name]||[];arr.push({time:Date.now(),code:editor.value});all[name]=arr.slice(-30);localStorage.setItem(histKey,JSON.stringify(all));renderHistory()});$('cpClearHistory').addEventListener('click',()=>{if(confirm('¿Borrar todo el historial local?')){localStorage.removeItem(histKey);renderHistory()}});
+function applyTheme(accent,bg){document.documentElement.style.setProperty('--accent-color',accent);document.documentElement.style.setProperty('--editor-bg',bg);document.querySelectorAll('.code-layer textarea,.code-layer pre,.line-numbers,textarea').forEach(el=>{if(el.id==='codeEditor'||el.id==='syntaxLayer')el.style.background=el.id==='codeEditor'?'transparent':bg;else if(el.id==='lineNumbers')el.style.background=bg});try{localStorage.setItem(themeKey,JSON.stringify({accent,bg}))}catch{}}
+document.querySelectorAll('.cp-theme').forEach(b=>b.addEventListener('click',()=>applyTheme(b.dataset.accent,b.dataset.bg)));$('cpCustomAccent').addEventListener('input',e=>applyTheme(e.target.value,'#020203'));$('cpFontSize').addEventListener('change',e=>{const size=Number(e.target.value)||14;document.querySelectorAll('.code-layer textarea,.code-layer pre,.line-numbers').forEach(el=>el.style.fontSize=size+'px')});$('cpResetTheme').addEventListener('click',()=>{applyTheme('#10b981','#020203');document.querySelectorAll('.code-layer textarea,.code-layer pre,.line-numbers').forEach(el=>el.style.fontSize='')});try{const t=JSON.parse(localStorage.getItem(themeKey)||'null');if(t)applyTheme(t.accent,t.bg)}catch{}
+const termOut=$('cpTerminalOut');function termPrint(text){termOut.textContent+='\n'+text;termOut.scrollTop=termOut.scrollHeight} $('cpTerminalForm').addEventListener('submit',e=>{e.preventDefault();const raw=$('cpTerminalInput').value.trim();if(!raw)return;$('cpTerminalInput').value='';terminalHistory.push(raw);termPrint('> '+raw);const [cmd,...args]=raw.split(/\s+/),f=saveEditor();if(cmd==='help')termPrint('Comandos: help, ls, pwd, cat <ruta>, clear, run');else if(cmd==='ls')termPrint(Object.keys(f).sort().join('\n')||'(sin archivos)');else if(cmd==='pwd')termPrint('/codeplay');else if(cmd==='cat'){const name=args.join(' ');termPrint(typeof f[name]==='string'?f[name]:'Archivo no encontrado: '+name)}else if(cmd==='clear')termOut.textContent='Terminal limpia.';else if(cmd==='run'){const name=activeName();if(name.endsWith('.html')){setTab('live');refreshPreview(true)}else termPrint('Para ejecutar '+name+', usa el botón ▶ Ejecutar del editor principal.')}else termPrint('Comando no reconocido. Escribe help.');});
+$('cpAiAsk').addEventListener('click',()=>{const prompt=$('cpAiPrompt').value.trim().toLowerCase(),code=editor.value,ext=activeName().split('.').pop().toLowerCase();let answer='';if(!prompt){answer='Escribe una petición para recibir ayuda.'}else if(/explica|qué hace|que hace|describe/.test(prompt)){answer='Resumen del archivo '+activeName()+':\n'+(code.trim()?('Tiene '+code.split('\n').length+' líneas y '+code.length+' caracteres.\n\n'+(ext==='py'?'Parece código Python. Busca definiciones con def, bucles for/while y llamadas print().':ext==='html'?'Parece un documento HTML. Revisa estructura head/body, etiquetas y atributos.':'Parece código JavaScript u otro texto. Revisa funciones, variables, condiciones y llamadas console.log().')):'El archivo está vacío.')+'\n\nFragmento inicial:\n'+code.split('\n').slice(0,8).join('\n')}else if(/error|depur|bug|revisa|corrige/.test(prompt)){const hints=[];if(!code.trim())hints.push('El archivo está vacío.');if((code.match(/\(/g)||[]).length!==(code.match(/\)/g)||[]).length)hints.push('El número de paréntesis de apertura y cierre no coincide.');if((code.match(/\{/g)||[]).length!==(code.match(/\}/g)||[]).length)hints.push('El número de llaves de apertura y cierre no coincide.');if(ext==='py'&&/\b(if|for|while|def|class)\b[^\n]*[^:\s]\s*(#.*)?$/m.test(code))hints.push('Puede faltar “:” al final de una condición, bucle o definición Python.');if(/console\.log/.test(code)===false&&ext==='js')hints.push('Añade console.log(...) para inspeccionar valores.');answer=hints.length?'Posibles puntos a revisar:\n• '+hints.join('\n• '):'No encontré señales obvias con las comprobaciones locales. Ejecuta el análisis rápido y revisa la consola.';answer+='\n\nNota: este asistente local usa heurísticas; no es una IA generativa conectada.'}else if(/función|funcion|function/.test(prompt)){answer=ext==='py'?'def nueva_funcion(valor):\n    """Describe aquí lo que hace la función."""\n    return valor': 'function nuevaFuncion(valor) {\n  // Describe aquí lo que hace la función\n  return valor;\n}'}else if(/html|página|pagina|sitio/.test(prompt)){answer='<!doctype html>\n<html lang="es">\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <title>Mi página</title>\n  <style>body{font-family:system-ui,sans-serif;padding:2rem;line-height:1.5}</style>\n</head>\n<body>\n  <h1>Hola, mundo</h1>\n  <p>Mi primera página.</p>\n  <script>console.log("Página lista");<\\/script>\n</body>\n</html>'}else{answer='Puedo ayudarte localmente a explicar el archivo, buscar errores comunes, proponer una función o generar una plantilla HTML. Prueba una petición como “explica este código”, “revisa errores” o “crea una función”. Para respuestas de IA avanzadas se requiere conectar un proveedor de IA con una API segura.'}lastAiResponse=answer;$('cpAiOutput').textContent=answer});$('cpAiInsert').addEventListener('click',()=>{if(!lastAiResponse){alert('Primero genera una respuesta.');return}editor.setRangeText(lastAiResponse,editor.selectionStart,editor.selectionEnd,'end');editor.dispatchEvent(new Event('input',{bubbles:true}));saveEditor()});
+const challenges=[{title:'1. Hola, mundo',level:'Principiante',desc:'Muestra el mensaje “Hola, mundo” en la consola.',code:{py:'print("Hola, mundo")',js:'console.log("Hola, mundo");',html:'<!doctype html><html><body><h1>Hola, mundo</h1></body></html>'}},{title:'2. Condiciones',level:'Principiante',desc:'Crea una variable edad y muestra si la persona es mayor de edad.',code:{py:'edad = 18\nif edad >= 18:\n    print("Mayor de edad")\nelse:\n    print("Menor de edad")',js:'const edad = 18;\nif (edad >= 18) {\n  console.log("Mayor de edad");\n} else {\n  console.log("Menor de edad");\n}'}},{title:'3. Bucle',level:'Intermedio',desc:'Imprime los números del 1 al 5 usando un bucle.',code:{py:'for i in range(1, 6):\n    print(i)',js:'for (let i = 1; i <= 5; i++) {\n  console.log(i);\n}' }},{title:'4. Funciones',level:'Intermedio',desc:'Crea una función que reciba dos números y devuelva su suma.',code:{py:'def sumar(a, b):\n    return a + b\n\nprint(sumar(3, 4))',js:'function sumar(a, b) {\n  return a + b;\n}\nconsole.log(sumar(3, 4));'}},{title:'5. Página interactiva',level:'Intermedio',desc:'Crea un botón que cambie el texto de un párrafo al pulsarlo.',code:{html:'<!doctype html><html lang="es"><body><p id="mensaje">Pulsa el botón</p><button onclick="document.getElementById(\'mensaje\').textContent=\'¡Funciona!\'">Cambiar texto</button></body></html>'}}];
+function renderChallenges(){const box=$('cpChallenges');if(box.children.length)return;challenges.forEach(ch=>{const card=document.createElement('div');card.className='cp-challenge';const h=document.createElement('h4');h.textContent=ch.title;const pill=document.createElement('span');pill.className='cp-pill';pill.textContent=ch.level;const p=document.createElement('p');p.textContent=ch.desc;const b=document.createElement('button');b.textContent='Abrir plantilla en editor';b.addEventListener('click',()=>{const ext=activeName().split('.').pop().toLowerCase(),code=ch.code[ext]||ch.code.js||ch.code.html;if(!confirm('¿Reemplazar el código del editor con la plantilla del reto?'))return;setEditorCode(code);modal.classList.remove('active')});card.append(h,pill,p,b);box.appendChild(card)})}
+// Auto-closing characters also works when using the on-screen symbol bar.
+const pairMap={'(':')','[':']','{':'}','"':'"',"'":"'",'`':'`'};
+editor.addEventListener('input',()=>{try{saveEditor()}catch{}});
+window.addEventListener('storage',()=>{if(modal.classList.contains('active'))refreshProjectList()});
+refreshProjectList();
+})();
+</script>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id), editor=$('codeEditor'); if(!editor)return;
+// CodePlay Pro 3.0: formatter, multi-file preview, local snapshots and playable mini-games.
+const formatBtn=$('formatCodeBtn');
+function formatHTML(source){
+ const tokens=source.replace(/>\s*</g,'>\n<').split('\n');let depth=0;const voids=new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']);
+ return tokens.map(line=>{const t=line.trim();if(!t)return '';const close=t.match(/^<\/([\w-]+)/);if(close)depth=Math.max(0,depth-1);const out='  '.repeat(depth)+t;const open=t.match(/^<([\w-]+)(?:\s|>|\/)/);if(open&&!/^<!|^<\?|^<script\b|^<style\b/i.test(t)&&!voids.has(open[1].toLowerCase())&&!/\/\s*>$/.test(t)&&!/^<\//.test(t))depth++;return out}).filter(Boolean).join('\n');
+}
+function formatJS(source){let out='',indent=0,quote='',escape=false,lineStart=true;const pad=()=> '  '.repeat(Math.max(0,indent));for(let i=0;i<source.length;i++){const c=source[i],n=source[i+1];if(lineStart){if(/\s/.test(c)&&c!=='\n')continue;out+=pad();lineStart=false}out+=c;if(quote){if(escape)escape=false;else if(c==='\\')escape=true;else if(c===quote)quote='';continue}if(c==='"'||c==="'"||c==='`'){quote=c;continue}if(c==='/'&&n==='/'){while(i+1<source.length&&source[i+1]!=='\n')out+=source[++i];continue}if(c==='{'){indent++;out+='\n';lineStart=true}else if(c==='}') {indent=Math.max(0,indent-1);out=out.replace(/[ \t]+$/,'');if(n!==';'&&n!==')'&&n!==','&&n!==']'&&n!=='.'&&n!=='('&&n!=='\n'&&n!==undefined)out+='\n';if(out.endsWith('\n'))lineStart=true}else if(c===';'){out+='\n';lineStart=true}else if(c==='\n'){out=out.replace(/[ \t]+$/,'');lineStart=true}else if(c===',' ){out+=' '} }return out.split('\n').map(x=>x.trimEnd()).join('\n').trim();}
+formatBtn?.addEventListener('click',()=>{const name=$('currentFileName').textContent.toLowerCase(),old=editor.value;let formatted=old;try{if(name.endsWith('.html'))formatted=formatHTML(old);else if(name.endsWith('.js'))formatted=formatJS(old);else if(name.endsWith('.css'))formatted=old.replace(/\s*\{\s*/g,' {\n  ').replace(/;\s*/g,';\n  ').replace(/\s*\}/g,'\n}\n').replace(/\n  \n/g,'\n');else if(name.endsWith('.py'))formatted=old.split('\n').map(line=>line.replace(/[ \t]+$/,'')).join('\n');else{alert('El formateador admite HTML, JavaScript, CSS y limpieza de espacios para Python.');return}editor.value=formatted;editor.dispatchEvent(new Event('input',{bubbles:true}));editor.focus();}catch(e){alert('No se pudo formatear: '+e.message)}});
+// Multi-file preview: resolves local <link href> and <script src> references against saved project paths.
+const live=$('cpLiveFrame');function normPath(path){const parts=[];for(const part of path.split('/')){if(!part||part==='.')continue;if(part==='..')parts.pop();else parts.push(part)}return parts.join('/')}
+function resolveProjectFile(path,files,htmlName){try{const clean=decodeURIComponent(path.split(/[?#]/)[0]);const candidate=normPath(clean.startsWith('/')?clean.slice(1):(htmlName.includes('/')?htmlName.slice(0,htmlName.lastIndexOf('/')+1):'')+clean);return files[candidate]}catch{return undefined}}
+function buildPreview(){const files=(()=>{try{return JSON.parse(localStorage.getItem('cp_files_system_v2')||'{}')}catch{return {}}})();const name=$('currentFileName').textContent;files[name]=editor.value;if(!name.toLowerCase().endsWith('.html'))return '<!doctype html><body style="font:16px system-ui;padding:20px"><h2>Vista previa HTML</h2><p>Abre un archivo .html para ver el sitio.</p></body>';const parser=new DOMParser(),doc=parser.parseFromString(editor.value,'text/html');doc.querySelectorAll('link[rel~="stylesheet"][href]').forEach(el=>{const css=resolveProjectFile(el.getAttribute('href'),files,name);if(typeof css==='string'){const style=doc.createElement('style');style.textContent=css;el.replaceWith(style)}});doc.querySelectorAll('script[src]').forEach(el=>{const js=resolveProjectFile(el.getAttribute('src'),files,name);if(typeof js==='string'){const script=doc.createElement('script');script.textContent=js;el.replaceWith(script)}});return '<!doctype html>\n'+doc.documentElement.outerHTML}
+const originalRefresh=window.__cpRefreshPreview;function patchPreview(){if(!live||!$('cpAutoPreview')?.checked)return;live.srcdoc=buildPreview()};document.querySelector('[data-tab="live"]')?.addEventListener('click',()=>setTimeout(patchPreview,0));$('cpRefreshPreview')?.addEventListener('click',()=>{live.srcdoc=buildPreview()});editor.addEventListener('input',()=>{if($('cpAutoPreview')?.checked){clearTimeout(window.__cp3PreviewTimer);window.__cp3PreviewTimer=setTimeout(patchPreview,300)}});
+// Local snapshots are intentionally labelled snapshots, not real Git commits.
+const snapKey='cp3_local_snapshots_v1';function snapshots(){try{return JSON.parse(localStorage.getItem(snapKey)||'[]')}catch{return []}}function saveSnapshots(arr){localStorage.setItem(snapKey,JSON.stringify(arr.slice(-50)))}function renderSnapshots(){const box=$('cpGitHistory');if(!box)return;box.replaceChildren();const arr=snapshots().filter(x=>x.file=== $('currentFileName').textContent).reverse();if(!arr.length){box.textContent='Sin snapshots para este archivo.';return}arr.forEach(s=>{const row=document.createElement('div');row.className='cp-snapshot';const label=document.createElement('span');label.textContent=new Date(s.time).toLocaleString()+' — '+s.message;const restore=document.createElement('button');restore.textContent='Restaurar';restore.addEventListener('click',()=>{if(!confirm('¿Restaurar este snapshot?'))return;editor.value=s.code;editor.dispatchEvent(new Event('input',{bubbles:true}));$('cpGitOutput').textContent='Snapshot restaurado: '+s.message});row.append(label,restore);box.appendChild(row)})}
+$('cpGitCommit')?.addEventListener('click',()=>{const arr=snapshots();arr.push({id:'local-'+Date.now(),file:$('currentFileName').textContent,time:Date.now(),message:$('cpCommitMessage').value.trim()||'Snapshot local',code:editor.value});saveSnapshots(arr);$('cpGitOutput').textContent='Snapshot local guardado. No se ha creado un commit Git ni se ha conectado a un remoto.';renderSnapshots()});$('cpGitCompare')?.addEventListener('click',()=>{const name=$('currentFileName').textContent,arr=snapshots().filter(x=>x.file===name),base=arr[arr.length-1];if(!base){$('cpGitOutput').textContent='No hay snapshot previo para comparar.';return}const before=base.code.split('\n'),after=editor.value.split('\n'),out=['Comparación local contra: '+base.message];const max=Math.max(before.length,after.length);for(let i=0;i<max;i++){if(before[i]===after[i])continue;if(before[i]!==undefined)out.push('- '+(i+1)+': '+before[i]);if(after[i]!==undefined)out.push('+ '+(i+1)+': '+after[i]);if(out.length>250){out.push('… comparación truncada');break}}$('cpGitOutput').textContent=out.join('\n')});$('cpGitExport')?.addEventListener('click',()=>{const blob=new Blob([JSON.stringify(snapshots(),null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='codeplay-snapshots.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});document.querySelector('[data-tab="git"]')?.addEventListener('click',renderSnapshots);
+// Playable guessing game and reaction-time game.
+const area=$('cpGameArea');$('cpGameGuess')?.addEventListener('click',()=>{area.replaceChildren();const title=document.createElement('h4');title.textContent='Adivina el número del 1 al 20';const input=document.createElement('input');input.type='number';input.min='1';input.max='20';input.placeholder='Tu número';input.setAttribute('aria-label','Número elegido');const btn=document.createElement('button');btn.textContent='Comprobar';const msg=document.createElement('p');msg.className='cp-muted';let target=Math.floor(Math.random()*20)+1,tries=0;btn.addEventListener('click',()=>{const n=Number(input.value);if(!Number.isInteger(n)||n<1||n>20){msg.textContent='Introduce un número entero entre 1 y 20.';return}tries++;if(n===target){msg.textContent='¡Correcto! Lo lograste en '+tries+' intento(s).';btn.disabled=true}else msg.textContent=n<target?'Prueba con uno mayor.':'Prueba con uno menor.'});area.append(title,input,btn,msg)});
+$('cpGameClick')?.addEventListener('click',()=>{area.replaceChildren();const msg=document.createElement('p');msg.textContent='Pulsa iniciar y luego toca el botón verde cuando aparezca.';const start=document.createElement('button');start.textContent='Iniciar';const hit=document.createElement('button');hit.textContent='¡AHORA!';hit.disabled=true;let timer=null,started=0,armed=false;start.addEventListener('click',()=>{clearTimeout(timer);armed=false;hit.disabled=true;msg.textContent='Espera la señal…';timer=setTimeout(()=>{armed=true;started=performance.now();hit.disabled=false;hit.style.background='#16a34a';msg.textContent='¡Pulsa ahora!'},800+Math.random()*2500)});hit.addEventListener('click',()=>{if(!armed)return;msg.textContent='Tiempo de reacción: '+Math.round(performance.now()-started)+' ms';armed=false;hit.disabled=true;hit.style.background=''});area.append(msg,start,hit)});
+$('cpGameTemplate')?.addEventListener('click',()=>{const code='<!doctype html>\n<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Juego Canvas</title><style>body{margin:0;background:#101827;color:white;font-family:system-ui;text-align:center}canvas{background:#e5e7eb;max-width:95vw;border-radius:12px;touch-action:manipulation}</style></head><body><h1>Mi juego 2D</h1><p>Toca el lienzo para mover el círculo.</p><canvas id="game" width="320" height="420"></canvas><script>const c=document.querySelector("canvas"),x=c.getContext("2d");let px=160,py=210;function draw(){x.clearRect(0,0,c.width,c.height);x.fillStyle="#10b981";x.beginPath();x.arc(px,py,18,0,Math.PI*2);x.fill()}c.addEventListener("pointerdown",e=>{const r=c.getBoundingClientRect();px=(e.clientX-r.left)*c.width/r.width;py=(e.clientY-r.top)*c.height/r.height;draw()});draw();<\/script></body></html>';editor.value=code;editor.dispatchEvent(new Event('input',{bubbles:true}));$('cpToolsModal').classList.remove('active')});
+})();
+</script>
+
+</body>
+</html>
