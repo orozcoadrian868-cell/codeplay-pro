@@ -1,0 +1,25 @@
+
+{
+  "id": "/codeplay-pro/",
+  "name": "CodePlay Pro - Cyber IDE",
+  "short_name": "CodePlay",
+  "description": "Editor de código para Python, JavaScript y HTML.",
+  "start_url": "/codeplay-pro/",
+  "scope": "/codeplay-pro/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#111827",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/orozcoadrian868-cell/codeplay-pro/principal/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/orozcoadrian868-cell/codeplay-pro/principal/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
